@@ -23,5 +23,5 @@ ATCODER_SESSION=<YOUR ATCODER SESSION CODE(REVEL_SESSION)>
 
 ```bash
 npm start     # 本番環境の場合
-npm run debug # 開発環境の場合
+npm run dev # 開発環境の場合
 ```

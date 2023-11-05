@@ -1,7 +1,7 @@
 import { createProblemTable } from "./images/problem";
 import { atcoderProblems, problems } from "./api/getProblems";
 import { setData, getData } from "./data";
-import { Client, IntentsBitField, SlashCommandBuilder, ChannelType } from "discord.js";
+import { Client, IntentsBitField, SlashCommandBuilder, ChannelType, AttachmentBuilder } from "discord.js";
 import { config } from "dotenv";
 config();
 
@@ -9,8 +9,8 @@ let client = new Client({
     intents: [IntentsBitField.Flags.Guilds],
 });
 
+process.stdout.write("\x1bc");
 client.on("ready", () => {
-    process.stdout.write("\x1bc");
     console.log("Ready!");
     client.application?.commands.set([
         new SlashCommandBuilder()
@@ -24,10 +24,16 @@ client.on("ready", () => {
     ]);
 
     let lastUpdateTime = new Date().getMinutes() - 1;
+    let lastUpdateDate = new Date().getDate() - 1;
+    updateTaskTable();
     setInterval(() => {
         if (lastUpdateTime != new Date().getMinutes()) {
             load();
             lastUpdateTime = new Date().getMinutes();
+        }
+        if (lastUpdateDate != new Date().getDate()) {
+            lastUpdateDate = new Date().getDate();
+            updateTaskTable();
         }
     }, 1000);
 });
@@ -52,11 +58,56 @@ client.on("interactionCreate", (interaction) => {
                         ephemeral: true,
                     });
                 }
+                setData("guilds.json", JSON.stringify(guildsConfig));
             } else {
                 interaction.reply({
                     content: "テキストチャンネルを指定してください",
                     ephemeral: true,
                 });
+            }
+        } else {
+            switch (interaction.commandName) {
+                case "set_channel":
+                    let optionChannel = interaction.options.getChannel("channel");
+                    let channel = optionChannel ? optionChannel : interaction.channel;
+                    if (channel?.type == ChannelType.GuildText) {
+                        if (interaction.guildId in guildsConfig) {
+                            guildsConfig[interaction.guildId].channel = channel.id;
+                            interaction.reply({
+                                content: "設定チャンネルを更新しました",
+                                ephemeral: true,
+                            });
+                        } else {
+                            guildsConfig[interaction.guildId] = { channel: channel.id, member: [] };
+                            interaction.reply({
+                                content: "チャンネルを設定しました",
+                                ephemeral: true,
+                            });
+                        }
+                        setData("guilds.json", JSON.stringify(guildsConfig));
+                    } else {
+                        interaction.reply({
+                            content: "テキストチャンネルを指定してください",
+                            ephemeral: true,
+                        });
+                    }
+                    break;
+                case "add_user":
+                    let user = interaction.options.getString("username");
+                    if (interaction.guildId in guildsConfig && user) {
+                        interaction.reply({
+                            content: "追加しました",
+                            ephemeral: true,
+                        });
+                        guildsConfig[interaction.guildId].member.push(user?.toLowerCase());
+                        setData("guilds.json", JSON.stringify(guildsConfig));
+                    } else {
+                        interaction.reply({
+                            content: "まずテキストチャンネルを指定してください",
+                            ephemeral: true,
+                        });
+                    }
+                    break;
             }
         }
     }
@@ -88,16 +139,28 @@ async function main() {
 }
 
 async function load() {
-    atcoderProblems().then((val) => {
+    atcoderProblems().then(async (val) => {
         cache = val;
         let d = getDifferent(l);
         for (let i in d) {
-            createProblemTable(cache[d[i]]);
+            let img = await createProblemTable(cache[d[i]]);
+            let attach = new AttachmentBuilder(img);
+            for (let i in guildsConfig) {
+                client.channels.fetch(guildsConfig[i].channel).then((value) => {
+                    if (value?.isTextBased()) {
+                        value.send({
+                            files: [attach],
+                        });
+                    }
+                });
+            }
             l.push(d[i]);
         }
         setData("loadedContest.json", JSON.stringify(l));
     });
 }
+
+function updateTaskTable() {}
 
 main();
 
