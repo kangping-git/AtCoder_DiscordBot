@@ -9,7 +9,7 @@ function createProblemTable(problem: problems["keys"]) {
             rating: Number(problem.problems[i].difficulty),
         });
     }
-    return createTable([
+    return createTable(problem.contestId + "のdiff", [
         {
             type: "user",
             name: "users",

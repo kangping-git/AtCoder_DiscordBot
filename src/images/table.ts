@@ -90,7 +90,7 @@ function getCircle(rating: number, x: number, y: number) {
     };
 }
 
-function createTable(table: table) {
+function createTable(title: string, table: table) {
     return new Promise<Buffer>((resolve, reject) => {
         let Table = [];
         let Circles = [];
@@ -101,7 +101,7 @@ function createTable(table: table) {
             if (table[i].type === "user") {
                 let data = table[i].data as userTable["data"];
                 let svg = [];
-                let y = 12;
+                let y = 52;
                 for (let j in data) {
                     let circleData = getCircle(data[j].rating, x + 20, y);
                     RatingCircleGradient.push(circleData.gradient);
@@ -138,6 +138,7 @@ function createTable(table: table) {
         <rect x="0" y="0" width="${x}" height="${h}" fill="#222"/>
         ${RatingCircleGradient.join("")}
         <g>
+            <text font-size="30" x="${x / 2}" y="30" fill="white" text-anchor="middle">${title}</text>
             ${Table.join("\n")}
         </g>
         ${Circles.join("\n")}

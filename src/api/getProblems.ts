@@ -95,24 +95,11 @@ async function atcoderProblems(): Promise<problems> {
     return data;
 }
 
+let session = "";
+
 async function login() {
     let req = await fetch("https://atcoder.jp/login", {
         headers: {
-            accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-            "Accept-Encoding": "gzip, deflate, br",
-            "accept-language": "ja,en;q=0.9,en-GB;q=0.8,en-US;q=0.7",
-            "cache-control": "max-age=0",
-            prefer: "safe",
-            Referer: "https://atcoder.jp/",
-            "sec-ch-ua": '"Microsoft Edge";v="119", "Chromium";v="119", "Not?A_Brand";v="24"',
-            "sec-ch-ua-mobile": "?0",
-            "sec-ch-ua-platform": '"Windows"',
-            "sec-fetch-dest": "document",
-            "sec-fetch-mode": "navigate",
-            "sec-fetch-site": "same-origin",
-            "sec-fetch-user": "?1",
-            "upgrade-insecure-requests": "1",
-            "Referrer-Policy": "strict-origin-when-cross-origin",
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 Edg/119.0.0.0",
         },
         body: null,
@@ -141,39 +128,47 @@ async function login() {
                 }
             }
         }
-        fetch("https://atcoder.jp/login", {
+        let login = await fetch("https://atcoder.jp/login?continue=https%3A%2F%2Fatcoder.jp%2Fusers%2Fkangping", {
             headers: {
-                accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-                "accept-language": "ja,en;q=0.9,en-GB;q=0.8,en-US;q=0.7",
-                "cache-control": "max-age=0",
                 "content-type": "application/x-www-form-urlencoded",
-                prefer: "safe",
-                "sec-ch-ua": '"Microsoft Edge";v="119", "Chromium";v="119", "Not?A_Brand";v="24"',
-                "sec-ch-ua-mobile": "?0",
-                "sec-ch-ua-platform": '"Windows"',
-                "sec-fetch-dest": "document",
-                "sec-fetch-mode": "navigate",
-                "sec-fetch-site": "same-origin",
-                "sec-fetch-user": "?1",
-                "upgrade-insecure-requests": "1",
                 cookie: cookie,
-                Referer: "https://atcoder.jp/login?continue=https%3A%2F%2Fatcoder.jp%2F",
-                "Referrer-Policy": "strict-origin-when-cross-origin",
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 Edg/119.0.0.0",
             },
             body: `username=${encodeURIComponent(String(process.env.ATCODER_USERNAME))}&password=${encodeURIComponent(
                 String(process.env.ATCODER_PASSWORD)
             )}&csrf_token=${encodeURIComponent(csrf_token)}`,
             method: "POST",
-        }).then((value) => {
-            if (value.status == 200) {
-                console.log("login success");
-            } else {
-                console.log("login failed!");
-            }
+            redirect: "manual",
         });
+        if (login.status == 302) {
+            for (let i of login.headers.getSetCookie()) {
+                let d = i.split("=");
+                if (d) {
+                    if (d[0] == "REVEL_SESSION") {
+                        session = d.slice(1).join("=");
+                    }
+                }
+            }
+        } else {
+            console.log("login failed!");
+        }
     }
 }
-login();
 
-export { atcoderProblems, problems };
+function AtCoderFetch(input: RequestInfo | URL, init: RequestInit = {}) {
+    if (init.headers) {
+        init.headers = Object.assign(init.headers, {
+            Cookie: "REVEL_FLASH=; REVEL_SESSION=" + session + ";",
+        });
+    } else {
+        init.headers = {
+            Cookie: "REVEL_FLASH=; REVEL_SESSION=" + session + ";",
+        };
+    }
+    // console.log(init);
+    return fetch(input, init);
+}
+
+async function updateTaskTable() {}
+
+export { atcoderProblems, problems, login, AtCoderFetch, updateTaskTable };

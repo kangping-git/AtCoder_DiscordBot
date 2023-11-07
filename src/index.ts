@@ -1,5 +1,5 @@
 import { createProblemTable } from "./images/problem";
-import { atcoderProblems, problems } from "./api/getProblems";
+import { atcoderProblems, problems, login, updateTaskTable } from "./api/getProblems";
 import { setData, getData } from "./data";
 import { Client, IntentsBitField, SlashCommandBuilder, ChannelType, AttachmentBuilder } from "discord.js";
 import { config } from "dotenv";
@@ -26,14 +26,15 @@ client.on("ready", () => {
     let lastUpdateTime = new Date().getMinutes() - 1;
     let lastUpdateDate = new Date().getDate() - 1;
     updateTaskTable();
-    setInterval(() => {
+    setInterval(async () => {
         if (lastUpdateTime != new Date().getMinutes()) {
             load();
             lastUpdateTime = new Date().getMinutes();
         }
         if (lastUpdateDate != new Date().getDate()) {
             lastUpdateDate = new Date().getDate();
-            updateTaskTable();
+            await login();
+            await updateTaskTable();
         }
     }, 1000);
 });
@@ -160,9 +161,8 @@ async function load() {
     });
 }
 
-function updateTaskTable() {}
-
 main();
+login();
 
 let token = process.env.TOKEN;
 if (!process.argv.includes("--main")) {
