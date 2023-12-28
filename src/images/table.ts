@@ -1,6 +1,5 @@
 import svg2img from "svg2img";
 import crypto from "crypto";
-import util from "util";
 
 type textTable = {
     type: "text";

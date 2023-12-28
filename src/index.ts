@@ -1,5 +1,6 @@
 import { createProblemTable } from "./images/problem";
-import { atcoderProblems, problems, login, updateTaskTable } from "./api/getProblems";
+import { atcoderProblems, problems, login } from "./api/getProblems";
+import { updateTaskTable } from "./api/tasks";
 import { setData, getData } from "./data";
 import { Client, IntentsBitField, SlashCommandBuilder, ChannelType, AttachmentBuilder } from "discord.js";
 import { config } from "dotenv";
@@ -25,7 +26,6 @@ client.on("ready", () => {
 
     let lastUpdateTime = new Date().getMinutes() - 1;
     let lastUpdateDate = new Date().getDate() - 1;
-    updateTaskTable();
     setInterval(async () => {
         if (lastUpdateTime != new Date().getMinutes()) {
             load();
@@ -147,13 +147,16 @@ async function load() {
             let img = await createProblemTable(cache[d[i]]);
             let attach = new AttachmentBuilder(img);
             for (let i in guildsConfig) {
-                client.channels.fetch(guildsConfig[i].channel).then((value) => {
-                    if (value?.isTextBased()) {
-                        value.send({
-                            files: [attach],
-                        });
-                    }
-                });
+                client.channels
+                    .fetch(guildsConfig[i].channel)
+                    .then((value) => {
+                        if (value?.isTextBased()) {
+                            value.send({
+                                files: [attach],
+                            });
+                        }
+                    })
+                    .catch(() => {});
             }
             l.push(d[i]);
         }
