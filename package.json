@@ -12,6 +12,7 @@
     },
     "scripts": {
         "start": "node dist/index.js --main",
-        "dev": "node dist/index.js"
+        "dev": "node dist/index.js",
+        "test": "node dist/test.js"
     }
 }

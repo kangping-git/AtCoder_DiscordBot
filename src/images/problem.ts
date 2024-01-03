@@ -5,10 +5,11 @@ function createProblemTable(problem: problems["keys"]) {
     let r: userTable["data"] = [];
     for (let i in problem.problems) {
         r.push({
-            name: problem.problems[i].name,
+            name: problem.problems[i].name.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"),
             rating: Number(problem.problems[i].difficulty),
         });
     }
+    console.log(r);
     return createTable(problem.contestId + "のdiff", [
         {
             type: "user",

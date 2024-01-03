@@ -1,4 +1,4 @@
-import svg2img from "svg2img";
+import { createCanvas, Image } from "canvas";
 import crypto from "crypto";
 
 type textTable = {
@@ -132,32 +132,20 @@ function createTable(title: string, table: table) {
                 h = Math.max(h, y);
             }
         }
-        svg2img(
-            `<svg xmlns="http://www.w3.org/2000/svg" width="${x}" height="${h}">
-        <rect x="0" y="0" width="${x}" height="${h}" fill="#222"/>
-        ${RatingCircleGradient.join("")}
-        <g>
-            <text font-size="30" x="${x / 2}" y="30" fill="white" text-anchor="middle">${title}</text>
-            ${Table.join("\n")}
-        </g>
-        ${Circles.join("\n")}
-    </svg>`,
-            {
-                resvg: {
-                    fitTo: {
-                        mode: "zoom",
-                        value: 10,
-                    },
-                },
-            },
-            (error, buffer) => {
-                if (error) {
-                    reject(error);
-                    return;
-                }
-                resolve(buffer);
-            }
-        );
+        let svgCode = `<svg xmlns="http://www.w3.org/2000/svg" width="${x}" height="${h}" font-family="monospace"><rect x="0" y="0" width="${x}" height="${h}" fill="#222"/>${RatingCircleGradient.join(
+            ""
+        )}<g><text font-size="30" x="${x / 2}" y="30" fill="white" text-anchor="middle">${title}</text>${Table.join("\n")}</g>${Circles.join("\n")}</svg>`;
+        const canvas = createCanvas(x, h);
+        const ctx = canvas.getContext("2d");
+        const image = new Image();
+        image.onload = () => {
+            ctx.drawImage(image, 0, 0);
+            resolve(canvas.toBuffer());
+        };
+        image.onerror = (e) => {
+            console.log(svgCode);
+        };
+        image.src = "data:image/svg," + svgCode;
     });
 }
 

@@ -1,5 +1,5 @@
 import { createProblemTable } from "./images/problem";
-import { atcoderProblems, problems, login } from "./api/getProblems";
+import { atcoderProblems, problems, login, AtCoderFetch } from "./api/getProblems";
 import { updateTaskTable } from "./api/tasks";
 import { setData, getData } from "./data";
 import { Client, IntentsBitField, SlashCommandBuilder, ChannelType, AttachmentBuilder } from "discord.js";
@@ -34,7 +34,6 @@ client.on("ready", () => {
         if (lastUpdateDate != new Date().getDate()) {
             lastUpdateDate = new Date().getDate();
             await login();
-            await updateTaskTable();
         }
     }, 1000);
 });

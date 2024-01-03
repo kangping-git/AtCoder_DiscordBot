@@ -126,76 +126,77 @@ const convertProblemIndexForSorting = (problem_index: string): [string, number] 
     return [str, num];
 };
 
-let session = "";
-
-async function login() {
-    let req = await fetch("https://atcoder.jp/login", {
-        headers: {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 Edg/119.0.0.0",
-        },
-        body: null,
-        method: "GET",
-    });
-    let html = await req.text();
-    libxmljs.parseHtmlAsync(html).then(async (j) => {
-        let _csrfToken = j
-            .find("//input[@name='csrf_token']/@value")[0]
-            .toString()
-            .match(/"[^"]*"/);
-        if (_csrfToken) {
-            let csrf_token = _csrfToken[0].slice(1, -1);
-            const formData = new FormData();
-            formData.append("username", process.env.ATCODER_USERNAME as string);
-            formData.append("password", process.env.ATCODER_PASSWORD as string);
-            formData.append("csrf_token", csrf_token as string);
-            let cookie = "";
-            for (let i of req.headers.getSetCookie()) {
-                let d = i.match(/^[^;]+/);
-                if (d) {
-                    if (cookie) {
-                        cookie += "; " + d[0];
-                    } else {
-                        cookie += d[0];
-                    }
-                }
-            }
-            let login = await fetch("https://atcoder.jp/login?continue=https%3A%2F%2Fatcoder.jp%2Fusers%2Fkangping", {
-                headers: {
-                    "content-type": "application/x-www-form-urlencoded",
-                    cookie: cookie,
-                    "User-Agent":
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 Edg/119.0.0.0",
-                },
-                body: `username=${encodeURIComponent(String(process.env.ATCODER_USERNAME))}&password=${encodeURIComponent(
-                    String(process.env.ATCODER_PASSWORD)
-                )}&csrf_token=${encodeURIComponent(csrf_token)}`,
-                method: "POST",
-                redirect: "manual",
-            });
-            if (login.status == 302) {
-                for (let i of login.headers.getSetCookie()) {
-                    let d = i.split("=");
+function login() {
+    return new Promise(async (resolve, reject) => {
+        let req = await fetch("https://atcoder.jp/login", {
+            headers: {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 Edg/119.0.0.0",
+            },
+            body: null,
+            method: "GET",
+        });
+        let html = await req.text();
+        libxmljs.parseHtmlAsync(html).then(async (j) => {
+            let _csrfToken = j
+                .find("//input[@name='csrf_token']/@value")[0]
+                .toString()
+                .match(/"[^"]*"/);
+            if (_csrfToken) {
+                let csrf_token = _csrfToken[0].slice(1, -1);
+                let cookie = "";
+                for (let i of req.headers.getSetCookie()) {
+                    let d = i.match(/^[^;]+/);
                     if (d) {
-                        if (d[0] == "REVEL_SESSION") {
-                            session = d.slice(1).join("=");
+                        if (cookie) {
+                            cookie += "; " + d[0];
+                        } else {
+                            cookie += d[0];
                         }
                     }
                 }
-            } else {
-                console.log("login failed!");
+                let login = await fetch("https://atcoder.jp/login?continue=https%3A%2F%2Fatcoder.jp%2Fusers%2Fkangping", {
+                    headers: {
+                        "content-type": "application/x-www-form-urlencoded",
+                        cookie: cookie,
+                        "User-Agent":
+                            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 Edg/119.0.0.0",
+                    },
+                    body: `username=${encodeURIComponent(String(process.env.ATCODER_USERNAME))}&password=${encodeURIComponent(
+                        String(process.env.ATCODER_PASSWORD)
+                    )}&csrf_token=${encodeURIComponent(csrf_token)}`,
+                    method: "POST",
+                    redirect: "manual",
+                });
+                if (login.status == 302) {
+                    for (let i of login.headers.getSetCookie()) {
+                        let d = i.split("=");
+                        if (d) {
+                            if (d[0] == "REVEL_SESSION") {
+                                process.env.session = d.slice(1).join("=");
+                            }
+                        }
+                    }
+                    resolve("");
+                } else {
+                    console.log("login failed!");
+                    resolve("");
+                }
+                return;
             }
-        }
+        });
     });
 }
+
+process.env.session = "";
 
 function AtCoderFetch(input: RequestInfo | URL, init: RequestInit = {}) {
     if (init.headers) {
         init.headers = Object.assign(init.headers, {
-            Cookie: "REVEL_FLASH=; REVEL_SESSION=" + session + ";",
+            Cookie: "REVEL_FLASH=; REVEL_SESSION=" + process.env.session + ";",
         });
     } else {
         init.headers = {
-            Cookie: "REVEL_FLASH=; REVEL_SESSION=" + session + ";",
+            Cookie: "REVEL_FLASH=; REVEL_SESSION=" + process.env.session + ";",
         };
     }
     return fetch(input, init);
