@@ -89,7 +89,7 @@ function getCircle(rating: number, x: number, y: number) {
     };
 }
 
-function createTable(title: string, table: table) {
+function createTable(title: string, table: table, showHeader: boolean = false) {
     return new Promise<Buffer>((resolve, reject) => {
         let Table = [];
         let Circles = [];
@@ -101,6 +101,11 @@ function createTable(title: string, table: table) {
                 let data = table[i].data as userTable["data"];
                 let svg = [];
                 let y = 52;
+                if (showHeader) {
+                    let X = x + table[i].width / 2;
+                    svg.push(`<tspan x="${X}" y="${y + 15}" fill="white" text-anchor="middle">${table[i].name}</tspan>`);
+                    y += 35;
+                }
                 for (let j in data) {
                     let circleData = getCircle(data[j].rating, x + 20, y);
                     RatingCircleGradient.push(circleData.gradient);
@@ -115,12 +120,17 @@ function createTable(title: string, table: table) {
             } else if (table[i].type === "text") {
                 let data = table[i] as textTable;
                 let svg = [];
-                let y = 12;
+                let y = 52;
                 let X = x;
                 if (data.align == "middle") {
                     X = X + data.width / 2;
                 } else if (data.align == "end") {
                     X = X + data.width;
+                }
+                if (showHeader) {
+                    let X = x + table[i].width / 2;
+                    svg.push(`<tspan x="${X}" y="${y + 15}" fill="white" text-anchor="middle">${table[i].name}</tspan>`);
+                    y += 35;
                 }
                 for (let j in data.data) {
                     svg.push(`<tspan x="${X}" y="${y + 15}" fill="${data.data[j].color}" text-anchor="${data.align}">${data.data[j].value}</tspan>`);
@@ -132,7 +142,7 @@ function createTable(title: string, table: table) {
                 h = Math.max(h, y);
             }
         }
-        let svgCode = `<svg xmlns="http://www.w3.org/2000/svg" width="${x}" height="${h}" font-family="monospace"><rect x="0" y="0" width="${x}" height="${h}" fill="#222"/>${RatingCircleGradient.join(
+        let svgCode = `<svg xmlns="http://www.w3.org/2000/svg" width="${x}" height="${h}" font-family='-apple-system,BlinkMacSystemFont,"Segoe UI","Roboto","Oxygen","Ubuntu","Cantarell","Fira Sans","Droid Sans","Helvetica Neue",sans-serif'><rect x="0" y="0" width="${x}" height="${h}" fill="#222"/>${RatingCircleGradient.join(
             ""
         )}<g><text font-size="30" x="${x / 2}" y="30" fill="white" text-anchor="middle">${title}</text>${Table.join("\n")}</g>${Circles.join("\n")}</svg>`;
         const canvas = createCanvas(x, h);
@@ -149,4 +159,4 @@ function createTable(title: string, table: table) {
     });
 }
 
-export { createTable, textTable, userTable };
+export { createTable, textTable, userTable, getRatingColor };
