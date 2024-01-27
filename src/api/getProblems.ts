@@ -144,7 +144,7 @@ function login() {
             if (_csrfToken) {
                 let csrf_token = _csrfToken[0].slice(1, -1);
                 let cookie = "";
-                for (let i of req.headers.getSetCookie()) {
+                for (let i of (req.headers.get("set-cookie") as string).split(",").map((v) => v.trim())) {
                     let d = i.match(/^[^;]+/);
                     if (d) {
                         if (cookie) {
@@ -168,7 +168,7 @@ function login() {
                     redirect: "manual",
                 });
                 if (login.status == 302) {
-                    for (let i of login.headers.getSetCookie()) {
+                    for (let i of (login.headers.get("set-cookie") as string).split(",").map((v) => v.trim())) {
                         let d = i.split("=");
                         if (d) {
                             if (d[0] == "REVEL_SESSION") {

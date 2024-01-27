@@ -1,4 +1,3 @@
-import { timeEnd } from "console";
 import libxmljs from "libxmljs";
 
 interface contestData {
@@ -9,6 +8,9 @@ interface contestData {
     type: "Algorithm" | "Heuristic";
     url: string;
     contestType: "" | "abc" | "arc" | "agc";
+    ratingRange: number[];
+    ratingRangeRaw: string;
+    contestID: string;
 }
 
 async function updateTaskTable() {
@@ -35,10 +37,11 @@ async function updateTaskTable() {
         } else if (_contestType == 'class="user-red"') {
             contestType = "agc";
         }
-        // コンテスト名&URLを取得
+        // コンテスト名&URL&コンテストIDを取得
         let _contestName = contestTypes.find("a")[0];
         let contestName = _contestName.find("text()").toString();
         let contestURL = _contestName.find("@href").toString().split("=")[1].slice(1, -1);
+        let contestID = contestURL.split("/").slice(-1)[0];
         // コンテスト時間を取得
         let _duration = val.find("td[position()=3]/text()").toString().split(":");
         let duration = Number(_duration[1]);
@@ -46,7 +49,7 @@ async function updateTaskTable() {
         // コンテスト終了時間を取得
         let timeEnd = new Date(time.getTime() + duration * 60 * 1000);
         // レーティング範囲を取得
-        let ratingRange = [0, Number.MAX_SAFE_INTEGER];
+        let ratingRange = [-Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER];
         let _ratingRange = val.find("td[position()=4]/text()").toString().trim();
         if (_ratingRange != "All") {
             if (_ratingRange == "-") {
@@ -69,9 +72,12 @@ async function updateTaskTable() {
             type: ratingType,
             url: contestURL,
             contestType: contestType,
+            ratingRange: ratingRange,
+            ratingRangeRaw: _ratingRange,
+            contestID: contestID,
         });
     });
     return tasks;
 }
 
-export { updateTaskTable };
+export { updateTaskTable, contestData };
