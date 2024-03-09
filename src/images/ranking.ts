@@ -1,3 +1,4 @@
+import { getHistory } from "../api/getUserHistory";
 import { getRanking, ranking } from "../api/ranking";
 import { contestData } from "../api/tasks";
 import { createTable, textTable, userTable } from "./table";
@@ -35,6 +36,34 @@ function calcAlgRatingFromLast({ oldRating, perf, ratedMatches }: { oldRating: n
     const numerator = weight * 2 ** (oldRating / 800.0) + 2 ** (perf / 800.0);
     const denominator = 1 + weight;
     return Math.log2(numerator / denominator) * 800.0 - f(ratedMatches + 1);
+}
+
+async function calcHeuristicRatingFromHistory(username: string, perf: number) {
+    let history_raw = await getHistory(username);
+    let history = history_raw
+        .filter((val) => val.IsRated)
+        .map((value) => {
+            return value.Performance;
+        });
+    history.push(perf);
+    history.reverse();
+    const S = 724.4744301;
+    const R = 0.8271973364;
+    const qs: number[] = [];
+    for (const perf of history) {
+        for (let i = 1; i <= 100; i++) {
+            qs.push(perf - S * Math.log(i));
+        }
+    }
+    qs.sort((a, b) => b - a);
+
+    let num = 0.0;
+    let den = 0.0;
+    for (let i = 99; i >= 0; i--) {
+        num = num * R + qs[i];
+        den = den * R + 1.0;
+    }
+    return num / den;
 }
 
 function calcPerf(i: ranking["StandingsData"][0], rankingOnlyRated: ranking["StandingsData"], APerf: APref, Memo: Map<number, number>, defaultAPref: number) {
@@ -111,6 +140,7 @@ async function CreateContestRanking(contestData: contestData, userList: string[]
     let rankingNewRate: userTable["data"] = [];
     let rankingSub: textTable["data"] = [];
     let rankingUserRated: textTable["data"] = [];
+    let rankingScores: textTable[] = [];
 
     let maxPerf = contestData.ratingRange[1] + 401;
     let defaultAPerf = 0;
@@ -140,13 +170,16 @@ async function CreateContestRanking(contestData: contestData, userList: string[]
     }
 
     let rankingOnlyRated = rankingRaw.StandingsData.filter((val) => val.IsRated);
+    if (contestData.type == "Heuristic") {
+        rankingOnlyRated = rankingOnlyRated.filter((val) => val.TotalResult.Count);
+    }
 
     // 順位の正規化
     let rankMap: { [keys: number]: number } = {};
     for (let i of rankingOnlyRated) {
         if (i.Rank in rankMap) {
-        } else {
             rankMap[i.Rank] += 1;
+        } else {
             rankMap[i.Rank] = 1;
         }
     }
@@ -167,6 +200,23 @@ async function CreateContestRanking(contestData: contestData, userList: string[]
     }
 
     rankingOnlyRated.sort((a, b) => a.Rank - b.Rank);
+    rankingScores.push({
+        align: "middle",
+        data: [],
+        type: "text",
+        width: contestData.type == "Heuristic" ? 250 : 90,
+        name: "Total",
+    });
+
+    for (let i of rankingRaw.TaskInfo) {
+        rankingScores.push({
+            align: "middle",
+            data: [],
+            type: "text",
+            width: contestData.type == "Heuristic" ? 250 : 90,
+            name: i.Assignment,
+        });
+    }
 
     let Memo = new Map<number, number>();
 
@@ -175,7 +225,11 @@ async function CreateContestRanking(contestData: contestData, userList: string[]
         rankingPlaceData.push({ color: "#fff", value: ordinal_suffix_of(ranking[i].Rank) });
         rankingUserData.push({ rating: ranking[i].Rating, name: ranking[i].UserScreenName });
         let rawPerf = -1;
-        if (ranking[i].IsRated) {
+        let heuristic = true;
+        if (contestData.type == "Heuristic") {
+            heuristic = ranking[i].TotalResult.Count > 0;
+        }
+        if (ranking[i].IsRated && heuristic) {
             let rankingIndex = rankingOnlyRated.findIndex((value) => {
                 return value.UserScreenName == ranking[i].UserScreenName;
             });
@@ -211,7 +265,12 @@ async function CreateContestRanking(contestData: contestData, userList: string[]
             rating: oldRate,
         });
 
-        let newRate = calcAlgRatingFromLast({ oldRating: ranking[i].Rating, perf: perf, ratedMatches: ranking[i].Competitions });
+        let newRate = 0;
+        if (contestData.type == "Heuristic") {
+            newRate = await calcHeuristicRatingFromHistory(ranking[i].UserScreenName, perf);
+        } else {
+            newRate = calcAlgRatingFromLast({ oldRating: ranking[i].Rating, perf: perf, ratedMatches: ranking[i].Competitions });
+        }
 
         if (newRate <= 400) {
             newRate = Math.round(400 / Math.E ** ((400 - newRate) / 400));
@@ -224,17 +283,47 @@ async function CreateContestRanking(contestData: contestData, userList: string[]
             rating: newRate,
         });
         rankingSub.push({
-            value: (newRate - oldRate >= 0 ? "+" : "") + (newRate - oldRate).toString(),
+            value: (newRate - oldRate >= 0 ? '<tspan fill="#92ff7f">+' : '<tspan fill="#ff7f7f">') + (newRate - oldRate).toString() + "</tspan>",
             color: "white",
         });
         rankingUserRated.push({
-            value: ranking[i].IsRated ? "Yes" : "No",
-            color: ranking[i].IsRated ? "white" : "gray",
+            value: ranking[i].IsRated && heuristic ? "Yes" : "No",
+            color: ranking[i].IsRated && heuristic ? "white" : "gray",
         });
         rankingPerfData.push({
             name: perf.toString(),
             rating: perf,
         });
+        rankingScores[0].data.push({
+            value:
+                ranking[i].TotalResult.Score / 100 +
+                (ranking[i].TotalResult.Penalty ? '<tspan fill="#f33">(' + ranking[i].TotalResult.Penalty + ")</tspan>" : ""),
+            color: "white",
+        });
+        let index = 1;
+        for (let j of rankingRaw.TaskInfo) {
+            let score = "";
+            if (ranking[i].TaskResults[j.TaskScreenName]) {
+                if (ranking[i].TaskResults[j.TaskScreenName].Score != 0) {
+                    score = (ranking[i].TaskResults[j.TaskScreenName].Score / 100).toString();
+                    if (ranking[i].TaskResults[j.TaskScreenName].Penalty) {
+                        score += '<tspan fill="#f33">(' + ranking[i].TaskResults[j.TaskScreenName].Penalty + ")</tspan>";
+                    }
+                } else {
+                    score = "";
+                    if (ranking[i].TaskResults[j.TaskScreenName].Count) {
+                        score += '<tspan fill="#f33">(' + ranking[i].TaskResults[j.TaskScreenName].Count + ")</tspan>";
+                    }
+                }
+            } else {
+                score = "-";
+            }
+            rankingScores[index].data.push({
+                value: score,
+                color: "white",
+            });
+            ++index;
+        }
     }
     return await createTable(
         contestID + "ランキング",
@@ -259,6 +348,7 @@ async function CreateContestRanking(contestData: contestData, userList: string[]
                 width: 300,
                 data: rankingUserData,
             },
+            ...rankingScores,
             {
                 type: "user",
                 name: "パフォ",
@@ -268,32 +358,32 @@ async function CreateContestRanking(contestData: contestData, userList: string[]
             {
                 type: "user",
                 name: "OldRate",
-                width: 140,
+                width: 130,
                 data: rankingOldRate,
             },
             {
                 type: "user",
                 name: "NewRate",
-                width: 140,
+                width: 130,
                 data: rankingNewRate,
             },
             {
                 type: "text",
                 name: "差分",
-                width: 140,
+                width: 80,
                 align: "middle",
                 data: rankingSub,
             },
             {
                 type: "user",
-                name: "上限なしperf",
-                width: 140,
+                name: "RealPerf",
+                width: 100,
                 data: rankingPerfNoLimitData,
             },
             {
                 type: "text",
                 name: "Rated",
-                width: 120,
+                width: 90,
                 align: "middle",
                 data: rankingUserRated,
             },
