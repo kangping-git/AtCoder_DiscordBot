@@ -1,7 +1,7 @@
 import fs from "fs/promises";
 import Path from "path";
 
-let devMode = !process.argv.includes("--main");
+let devMode = process.argv.includes("--main");
 let dataPath = Path.join(__dirname, "../data/", devMode ? "debug" : "main");
 
 function getData(path: string) {

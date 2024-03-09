@@ -10,8 +10,8 @@
         "typescript": "^5.2.2"
     },
     "scripts": {
-        "start": "node dist/index.js --main",
-        "dev": "node dist/index.js",
+        "start": "node dist/index.js",
+        "dev": "node dist/index.js --debug",
         "test": "node dist/test.js"
     }
 }

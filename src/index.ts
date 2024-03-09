@@ -238,7 +238,7 @@ async function load_day() {
 async function load() {
     let nowTime = "<t:" + Math.floor(new Date().getTime() / 1000) + ":f>(<t:" + Math.floor(new Date().getTime() / 1000) + ":R>)";
     for (let i of contests) {
-        if (i.startTime.getTime() <= new Date().getTime() && i.endTime.getTime() >= new Date().getTime() - 1000 * 60 * 50 && i.contestID in NotionData) {
+        if (i.startTime.getTime() <= new Date().getTime() && i.endTime.getTime() >= new Date().getTime() && i.contestID in NotionData) {
             let rankingRaw = await getRanking(i.contestID);
             let APerf: APref = await (await fetch("https://data.ac-predictor.com/aperfs/" + i.contestID + ".json")).json();
             for (let guild in guildsConfig) {
@@ -263,7 +263,7 @@ async function load() {
                     .catch(() => {});
             }
         }
-        if (i.startTime.getTime() <= new Date().getTime() && i.endTime.getTime() >= new Date().getTime() - 1000 * 60 * 50 && !(i.contestID in NotionData)) {
+        if (i.startTime.getTime() <= new Date().getTime() && i.endTime.getTime() >= new Date().getTime() && !(i.contestID in NotionData)) {
             NotionData[i.contestID] = {};
             let rankingRaw = await getRanking(i.contestID);
             let APerf: APref = await (await fetch("https://data.ac-predictor.com/aperfs/" + i.contestID + ".json")).json();
@@ -481,7 +481,7 @@ login();
 
 let token = process.env.TOKEN;
 process.env.debug = "no";
-if (!process.argv.includes("--main")) {
+if (process.argv.includes("--debug")) {
     token = process.env.DEV_TOKEN;
     process.env.debug = "yes";
 }
