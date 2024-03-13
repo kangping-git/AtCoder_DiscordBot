@@ -1,4 +1,4 @@
-import { getRanking, ranking } from "./api/ranking";
+import { getRanking } from "./api/ranking";
 import { createProblemTable } from "./images/problem";
 import { atcoderProblems, problems, login, AtCoderFetch } from "./api/getProblems";
 import { updateTaskTable, contestData } from "./api/tasks";
